@@ -132,6 +132,29 @@ def add_product():
     cancel_button = Button(button_frame, text="Скасувати", command=add_window.destroy, width=12)
     cancel_button.pack(side="left", padx=5)
 
+def add_settings():
+    add_window_settings = tk.Toplevel(program)
+    add_window_settings.title("Нaлаштування")
+    add_window_settings.geometry("720x200")
+
+    notebook = ttk.Notebook(add_window_settings)
+
+    tab1 = ttk.Frame(notebook)
+    tab2 = ttk.Frame(notebook)
+    tab3 = ttk.Frame(notebook)
+    tab4 = ttk.Frame(notebook)
+    tab5 = ttk.Frame(notebook)
+
+# Додавання вкладок до `Notebook`
+    notebook.add(tab1, text="Категорії")
+    notebook.add(tab2, text="Клієнти")
+    notebook.add(tab3, text="Звіт")
+    notebook.add(tab4, text="Постачальники")
+    notebook.add(tab5, text="Одиниці")
+
+# Розміщення `Notebook`
+    notebook.pack(expand=True, fill="both")
+    add_window_settings.mainloop()
 # Функція для фільтрації категорій і постачальників
 def filter_combobox(combobox, data_source):
     search_text = combobox.get().lower()
@@ -293,7 +316,7 @@ search_entry.pack(side='left', padx=5)
 add_product_button = Button(upper_frame, text="Додати товар", command=add_product)
 add_product_button.pack(side='right', padx=5)
 
-settings_button = Button(upper_frame, text="Налаштування", command=lambda: print("Налаштування"))
+settings_button = Button(upper_frame, text="Налаштування", command=add_settings)
 settings_button.pack(side='right', padx=5)
 
 # Головний контейнер
@@ -415,10 +438,7 @@ search_entry.bind("<FocusIn>", on_search_entry_focus_in)
 search_entry.bind("<FocusOut>", on_search_entry_focus_out)
 search_entry.bind("<KeyRelease>", on_search_entry_change)  # Залишаємо вашу функцію пошуку
 
-
-
 update_table()
-
 program.mainloop()
 
 if connection:
