@@ -135,26 +135,143 @@ def add_product():
 def add_settings():
     add_window_settings = tk.Toplevel(program)
     add_window_settings.title("Нaлаштування")
-    add_window_settings.geometry("720x200")
+    add_window_settings.geometry("900x500")
 
     notebook = ttk.Notebook(add_window_settings)
 
-    tab1 = ttk.Frame(notebook)
-    tab2 = ttk.Frame(notebook)
-    tab3 = ttk.Frame(notebook)
-    tab4 = ttk.Frame(notebook)
-    tab5 = ttk.Frame(notebook)
+    tab1 = ttk.Frame(notebook)  # Категорії
+    tab2 = ttk.Frame(notebook)  # Клієнти
+    tab3 = ttk.Frame(notebook)  # Звіт (поки не чіпаємо)
+    tab4 = ttk.Frame(notebook)  # Постачальники
+    tab5 = ttk.Frame(notebook)  # Одиниці
 
-# Додавання вкладок до `Notebook`
+    # Додавання вкладок до `Notebook`
     notebook.add(tab1, text="Категорії")
     notebook.add(tab2, text="Клієнти")
     notebook.add(tab3, text="Звіт")
     notebook.add(tab4, text="Постачальники")
     notebook.add(tab5, text="Одиниці")
 
-# Розміщення `Notebook`
-    notebook.pack(expand=True, fill="both")
-    add_window_settings.mainloop()
+    notebook.pack(expand=True, fill="both")  # Робимо `Notebook` розтягнутим
+
+    # Функції для отримання даних
+    def fetch_categories():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id_category, name_category FROM category")
+            return cursor.fetchall()
+
+    def fetch_clients():
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id_client, name_client, telephone_client, mail_client, 
+                       legaladdress_client, legalforms_client, iban_client FROM client
+            """)
+            return cursor.fetchall()
+
+    def fetch_providers():
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id_provider, name_provider, telephote_provider, mail_provider, 
+                       menedger_provider, legaladdress_provider, legalform_provider, iban_provider 
+                FROM provider
+            """)
+            return cursor.fetchall()
+
+    def fetch_units():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT unit FROM unit")
+            return cursor.fetchall()
+
+    # Функція створення таблиці
+    def create_table(tab, columns, fetch_function, add_function):
+        frame = ttk.Frame(tab)
+        frame.pack(expand=True, fill="both")
+
+        tree = ttk.Treeview(frame, columns=columns, show="headings")
+
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=150, anchor="center")
+
+        tree.pack(expand=True, fill="both", side="top")
+
+        def update_table():
+            for row in tree.get_children():
+                tree.delete(row)
+            for row in fetch_function():
+                tree.insert("", "end", values=row)
+
+        update_table()  # Заповнюємо таблицю при створенні
+
+        # Додаємо кнопку "Додати"
+        add_button = tk.Button(frame, text="Додати", command=lambda: add_function(update_table))
+        add_button.pack(pady=5)
+
+        return tree
+
+    # Функція для додавання нових записів
+    def add_entry(title, fields, insert_query, update_func):
+        add_window = tk.Toplevel(add_window_settings)
+        add_window.title(title)
+        add_window.geometry("400x300")
+
+        entries = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(add_window, text=field).grid(row=i, column=0, padx=10, pady=5, sticky="w")
+            entry = tk.Entry(add_window, width=30)
+            entry.grid(row=i, column=1, padx=10, pady=5)
+            entries[field] = entry
+
+        def save_entry():
+            values = [entry.get() for entry in entries.values()]
+            if not all(values):
+                messagebox.showerror("Помилка", "Усі поля повинні бути заповнені!")
+                return
+
+            with connection.cursor() as cursor:
+                cursor.execute(insert_query, values)
+                connection.commit()
+
+            messagebox.showinfo("Успіх", "Дані додано!")
+            add_window.destroy()
+            update_func()  # Оновлення таблиці
+
+        tk.Button(add_window, text="Зберегти", command=save_entry).grid(row=len(fields), column=0, columnspan=2, pady=10)
+
+    # Створюємо таблиці у вкладках
+    create_table(
+        tab1,
+        ("ID", "Назва Категорії"),
+        fetch_categories,
+        lambda update: add_entry("Додати категорію", ["Назва Категорії"],
+                                 "INSERT INTO category (name_category) VALUES (%s)", update)
+    )
+
+    create_table(
+        tab2,
+        ("ID", "Ім'я", "Телефон", "Email", "Юр. адреса", "Форма", "IBAN"),
+        fetch_clients,
+        lambda update: add_entry("Додати клієнта", ["Ім'я", "Телефон", "Email", "Юр. адреса", "Форма", "IBAN"],
+                                 "INSERT INTO client (name_client, telephone_client, mail_client, legaladdress_client, legalforms_client, iban_client) VALUES (%s, %s, %s, %s, %s, %s)", update)
+    )
+
+    create_table(
+        tab4,
+        ("ID", "Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Форма", "IBAN"),
+        fetch_providers,
+        lambda update: add_entry("Додати постачальника", ["Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Форма", "IBAN"],
+                                 "INSERT INTO provider (name_provider, telephone_provider, mail_provider, menedger_provider, legaladdress_provider, legalfrom_provider, iban_provider) VALUES (%s, %s, %s, %s, %s, %s, %s)", update)
+    )
+
+    create_table(
+        tab5,
+        ("Одиниця вимірювання",),
+        fetch_units,
+        lambda update: add_entry("Додати одиницю вимірювання", ["Одиниця вимірювання"],
+                                 "INSERT INTO unit (unit) VALUES (%s)", update)
+    )
+
 # Функція для фільтрації категорій і постачальників
 def filter_combobox(combobox, data_source):
     search_text = combobox.get().lower()
