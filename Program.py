@@ -144,6 +144,7 @@ def add_settings():
     tab3 = ttk.Frame(notebook)  # Звіт (поки не чіпаємо)
     tab4 = ttk.Frame(notebook)  # Постачальники
     tab5 = ttk.Frame(notebook)  # Одиниці
+    tab6 = ttk.Frame(notebook)  # Списане
 
     # Додавання вкладок до `Notebook`
     notebook.add(tab1, text="Категорії")
@@ -151,6 +152,8 @@ def add_settings():
     notebook.add(tab3, text="Звіт")
     notebook.add(tab4, text="Постачальники")
     notebook.add(tab5, text="Одиниці")
+    notebook.add(tab6, text="Списане")
+
 
     notebook.pack(expand=True, fill="both")  # Робимо `Notebook` розтягнутим
 
@@ -181,6 +184,13 @@ def add_settings():
         with connection.cursor() as cursor:
             cursor.execute("SELECT unit FROM unit")
             return cursor.fetchall()
+
+    def fetch_winteff():
+        with connection.cursor() as cursor:
+            cursor.execute("""SELECT id_goods, name_goods, id_category_goods, number_goods, units_goods, 
+                                Selling_price_goods, purchase_price_goods, id_provider_goods, description_goods
+                            FROM goods""")
+            return  cursor.fetchall()
 
     # Функція створення таблиці
     def create_table(tab, columns, fetch_function, add_function):
@@ -271,7 +281,14 @@ def add_settings():
         lambda update: add_entry("Додати одиницю вимірювання", ["Одиниця вимірювання"],
                                  "INSERT INTO unit (unit) VALUES (%s)", update)
     )
-
+    create_table(
+        tab6,
+        ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
+           "Ціна продажу", "Ціна закупівлі", "Постачальник","Опис товару", "Дії",),
+        fetch_winteff,
+        lambda update: add_entry("Видалить зі списаного", ["Видалення"],
+                             "INSERT INTO unit (unit) VALUES (%s)", update)
+    )
 # Функція для фільтрації категорій і постачальників
 def filter_combobox(combobox, data_source):
     search_text = combobox.get().lower()
