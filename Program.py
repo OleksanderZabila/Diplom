@@ -260,17 +260,17 @@ def add_settings():
 
     create_table(
         tab2,
-        ("ID", "Ім'я", "Телефон", "Email", "Юр. адреса", "Форма", "IBAN"),
+        ("ID", "Назва", "Телефон", "Email", "Юр. адреса", "Правова форма", "IBAN"),
         fetch_clients,
-        lambda update: add_entry("Додати клієнта", ["Ім'я", "Телефон", "Email", "Юр. адреса", "Форма", "IBAN"],
+        lambda update: add_entry("Додати клієнта", ["Назва", "Телефон", "Email", "Юр. адреса", "Правова форма", "IBAN"],
                                  "INSERT INTO client (name_client, telephone_client, mail_client, legaladdress_client, legalforms_client, iban_client) VALUES (%s, %s, %s, %s, %s, %s)", update)
     )
 
     create_table(
         tab4,
-        ("ID", "Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Форма", "IBAN"),
+        ("ID", "Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Правова форма", "IBAN"),
         fetch_providers,
-        lambda update: add_entry("Додати постачальника", ["Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Форма", "IBAN"],
+        lambda update: add_entry("Додати постачальника", ["Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Правова форма", "IBAN"],
                                  "INSERT INTO provider (name_provider, telephone_provider, mail_provider, menedger_provider, legaladdress_provider, legalfrom_provider, iban_provider) VALUES (%s, %s, %s, %s, %s, %s, %s)", update)
     )
 
@@ -410,13 +410,6 @@ def edit_product(product_id):
     cancel_button = Button(button_frame, text="Скасувати", command=edit_window.destroy, width=12)
     cancel_button.pack(side="left", padx=5)
 
-# Функція для додавання кнопки "Редагувати" в таблицю товарів
-def add_edit_button_to_table():
-    for i, item in enumerate(table.get_children()):
-        product_id = table.item(item, "values")[0]  # Отримуємо ID товару
-        edit_button = Button(table, text="✏️", command=lambda pid=product_id: edit_product(pid))
-        table.set(item, column="Дії", value=edit_button)
-
 # Оновлення головної таблиці (додаємо поле "Опис товару" і кнопку редагування)
 def update_table(category=None):
     for item in table.get_children():
@@ -440,7 +433,7 @@ program.resizable(width=False, height=False)
 upper_frame = tk.Frame(program)
 upper_frame.pack(fill='x', padx=10, pady=5)
 
-search_label = tk.Label(upper_frame, text="Пошук за назвою:")
+search_label = tk.Label(upper_frame, text="Фільтр за назвою:")
 search_label.pack(side='left', padx=5)
 
 search_entry = Entry(upper_frame, width=40)
