@@ -42,6 +42,9 @@ def fetch_providers():
 
 # Функція додавання товару
 def add_product():
+
+    def add_provider_of_product():
+        {}
     def submit():
         name = name_entry.get()
         category = category_combobox.get()
@@ -51,6 +54,7 @@ def add_product():
         purchase_price = purchase_price_entry.get()
         provider = provider_combobox.get()
         description = description_entry.get("1.0", "end-1c")  # Виправлена помилка
+
 
         if not all([name, category, quantity, unit, selling_price, purchase_price, provider]):
             messagebox.showerror("Помилка", "Усі поля обов'язкові для заповнення!")
@@ -82,9 +86,60 @@ def add_product():
     add_window.title("Додати товар")
     add_window.geometry("720x200")  # Оптимальний розмір вікна
 
+    def add_provider_button():
+        provider_window = tk.Toplevel(add_window)
+        provider_window.title("Додати постачальника")
+        provider_window.geometry("600x270")
+
+        labels = ["Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Правова форма", "IBAN"]
+        entries = {}
+
+        for i, label in enumerate(labels):
+            tk.Label(provider_window, text=label).grid(row=i, column=0, padx=10, pady=5, sticky="w")
+            entry = tk.Entry(provider_window, width=30)
+            entry.grid(row=i, column=1, padx=10, pady=5)
+            entries[label] = entry
+
+        def add_provider():
+            if connection:
+                with connection.cursor() as cursor:
+                    # Додаємо нового постачальника
+                    cursor.execute("""
+                        INSERT INTO provider (name_provider, telephote_provider, mail_provider, menedger_provider, 
+                                               legaladdress_provider, legalform_provider, iban_provider) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (entries["Назва"].get(), entries["Телефон"].get(), entries["Email"].get(),
+                          entries["Менеджер"].get(), entries["Юр. адреса"].get(),
+                          entries["Правова форма"].get(), entries["IBAN"].get()))
+
+                update_table()
+
+            load_providers()  # Оновлюємо таблицю
+
+        def load_providers():
+            """Очищає таблицю та завантажує імена постачальників."""
+            if connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT name_provider FROM provider")
+                    providers = cursor.fetchall()
+
+            provider_table.delete(*provider_table.get_children())  # Очищення таблиці
+
+            for provider in providers:
+                provider_table.insert("", "end", values=provider)  # Додаємо постачальників у таблицю
+
+        # Кнопка для додавання постачальника
+        tk.Button(provider_window, text="Додати", command=add_provider).grid(row=7, column=0, columnspan=2, pady=10)
+
+        # Таблиця постачальників
+        provider_table = ttk.Treeview(provider_window, columns=("name",), show="headings", height=8)
+        provider_table.heading("name", text="Постачальники")
+        provider_table.grid(row=0, column=2, rowspan=8, padx=10, pady=5)
+
+        load_providers()  # Завантажуємо дані при запуску
+
     frame = tk.Frame(add_window, padx=10, pady=10)
     frame.pack(fill="both", expand=True)
-
     # Верхній ряд
     tk.Label(frame, text="Назва товару:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
     name_entry = Entry(frame, width=20)
@@ -118,7 +173,10 @@ def add_product():
     provider_combobox.grid(row=2, column=1, columnspan=2, padx=5, pady=2)
     provider_combobox.bind("<KeyRelease>", lambda event: filter_combobox(provider_combobox, fetch_providers()))
 
-    tk.Label(frame, text="Опис товару:").grid(row=3, column=0, sticky="nw", padx=5, pady=2)
+    provider_button = Button(frame, text="Додати Постачальника", command=add_provider_button, width=20)
+    provider_button.grid(row=2, column=3, padx=5, pady=2)
+
+    tk.Label(frame, text="Опис товару:").grid(row=3, column=0, sticky="w", padx=5, pady=2)
     description_entry = tk.Text(frame, width=65, height=3)  # Збільшено поле опису
     description_entry.grid(row=3, column=1, columnspan=5, padx=5, pady=2)
 
