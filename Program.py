@@ -117,7 +117,7 @@ def add_product():
             load_providers()  # Оновлюємо таблицю
 
         def load_providers():
-            """Очищає таблицю та завантажує імена постачальників."""
+            """Очищає таблицю та завантажує імена постачальникі."""
             if connection:
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT name_provider FROM provider")
