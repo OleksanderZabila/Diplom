@@ -40,6 +40,7 @@ def fetch_providers():
             return [row[0] for row in cursor.fetchall()]
     return []
 
+
 # Функція додавання товару
 def add_product():
 
@@ -207,11 +208,8 @@ def add_settings():
     # Додавання вкладок до `Notebook`
     notebook.add(tab1, text="Категорії")
     notebook.add(tab2, text="Клієнти")
-    notebook.add(tab3, text="Звіт")
     notebook.add(tab4, text="Постачальники")
     notebook.add(tab5, text="Одиниці")
-    notebook.add(tab6, text="Списане")
-
 
     notebook.pack(expand=True, fill="both")  # Робимо `Notebook` розтягнутим
 
@@ -339,14 +337,7 @@ def add_settings():
         lambda update: add_entry("Додати одиницю вимірювання", ["Одиниця вимірювання"],
                                  "INSERT INTO unit (unit) VALUES (%s)", update)
     )
-    create_table(
-        tab6,
-        ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
-           "Ціна продажу", "Ціна закупівлі", "Постачальник","Опис товару", "Дії",),
-        fetch_winteff,
-        lambda update: add_entry("Видалить зі списаного", ["Видалення"],
-                             "INSERT INTO unit (unit) VALUES (%s)", update)
-    )
+
 # Функція для фільтрації категорій і постачальників
 def filter_combobox(combobox, data_source):
     search_text = combobox.get().lower()
@@ -478,8 +469,6 @@ def update_table(category=None):
         for row in cursor.fetchall():
             table.insert("", "end", values=row)
 
-    add_edit_button_to_table()
-
 
 # Головне вікно
 program = tk.Tk()
@@ -503,6 +492,13 @@ add_product_button.pack(side='right', padx=5)
 
 settings_button = Button(upper_frame, text="Налаштування", command=add_settings)
 settings_button.pack(side='right', padx=5)
+
+settings_button = Button(upper_frame, text="Звіт", command=add_settings)
+settings_button.pack(side='right', padx=5)
+
+settings_button = Button(upper_frame, text="Списане", command=add_settings)
+settings_button.pack(side='right', padx=5)
+
 
 # Головний контейнер
 main_frame = tk.Frame(program)
