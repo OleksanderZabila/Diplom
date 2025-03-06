@@ -249,15 +249,15 @@ def add_settings():
             return  cursor.fetchall()
 
     # Функція створення таблиці
-    def create_table(tab, columns, fetch_function, add_function):
+    def create_table(tab, columns, column_widths, fetch_function, add_function):
         frame = ttk.Frame(tab)
         frame.pack(expand=True, fill="both")
 
         tree = ttk.Treeview(frame, columns=columns, show="headings")
 
-        for col in columns:
+        for i, col in enumerate(columns):
             tree.heading(col, text=col)
-            tree.column(col, width=150, anchor="center")
+            tree.column(col, width=column_widths[i], anchor="w")
 
         tree.pack(expand=True, fill="both", side="top")
 
@@ -309,6 +309,7 @@ def add_settings():
     create_table(
         tab1,
         ("ID", "Назва Категорії"),
+        [20, 800],
         fetch_categories,
         lambda update: add_entry("Додати категорію", ["Назва Категорії"],
                                  "INSERT INTO category (name_category) VALUES (%s)", update)
@@ -317,26 +318,65 @@ def add_settings():
     create_table(
         tab2,
         ("ID", "Назва", "Телефон", "Email", "Юр. адреса", "Правова форма", "IBAN"),
+        [10, 100, 100, 100, 100, 100, 100],  # Ширини стовпців
         fetch_clients,
         lambda update: add_entry("Додати клієнта", ["Назва", "Телефон", "Email", "Юр. адреса", "Правова форма", "IBAN"],
-                                 "INSERT INTO client (name_client, telephone_client, mail_client, legaladdress_client, legalforms_client, iban_client) VALUES (%s, %s, %s, %s, %s, %s)", update)
+                                 "INSERT INTO client (name_client, telephone_client, mail_client, legaladdress_client, legalforms_client, iban_client) VALUES (%s, %s, %s, %s, %s, %s)",
+                                 update)
     )
 
     create_table(
         tab4,
         ("ID", "Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Правова форма", "IBAN"),
+        [10, 100, 100, 100, 100, 100, 100, 100],  # Ширини стовпців
         fetch_providers,
-        lambda update: add_entry("Додати постачальника", ["Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Правова форма", "IBAN"],
-                                 "INSERT INTO provider (name_provider, telephone_provider, mail_provider, menedger_provider, legaladdress_provider, legalfrom_provider, iban_provider) VALUES (%s, %s, %s, %s, %s, %s, %s)", update)
+        lambda update: add_entry("Додати постачальника",
+                                 ["Назва", "Телефон", "Email", "Менеджер", "Юр. адреса", "Правова форма", "IBAN"],
+                                 "INSERT INTO provider (name_provider, telephone_provider, mail_provider, menedger_provider, legaladdress_provider, legalfrom_provider, iban_provider) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                                 update)
     )
 
     create_table(
         tab5,
         ("Одиниця вимірювання",),
+        [200],  # Ширина одного стовпця
         fetch_units,
         lambda update: add_entry("Додати одиницю вимірювання", ["Одиниця вимірювання"],
                                  "INSERT INTO unit (unit) VALUES (%s)", update)
     )
+
+
+#звіт
+def report():
+    {}
+#списаний товар
+def written_off():
+    add_window_written_off = tk.Toplevel()
+    add_window_written_off.title("Списаний товар")
+    add_window_written_off.geometry("900x500")
+
+    # Верхній фрейм (додає порожній простір)
+    upper_frame = tk.Frame(add_window_written_off, height=20)
+    upper_frame.pack(fill='x', padx=10, pady=10)
+
+    # Порожній Label для додаткового простору
+    empty_space = tk.Label(upper_frame, text="")
+    empty_space.pack()
+
+    # Фрейм для таблиці (справа)
+    right_frame = tk.Frame(add_window_written_off)
+    right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=5)
+
+    columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
+               "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дії")
+
+    table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
+    for col in columns:
+        table.heading(col, text=col)
+        table.column(col, anchor="center", width=130)
+
+    table.pack(fill="both", expand=True)
+
 
 # Функція для фільтрації категорій і постачальників
 def filter_combobox(combobox, data_source):
@@ -493,10 +533,10 @@ add_product_button.pack(side='right', padx=5)
 settings_button = Button(upper_frame, text="Налаштування", command=add_settings)
 settings_button.pack(side='right', padx=5)
 
-settings_button = Button(upper_frame, text="Звіт", command=add_settings)
+settings_button = Button(upper_frame, text="Звіт", command=report)
 settings_button.pack(side='right', padx=5)
 
-settings_button = Button(upper_frame, text="Списане", command=add_settings)
+settings_button = Button(upper_frame, text="Списане", command=written_off)
 settings_button.pack(side='right', padx=5)
 
 
@@ -564,7 +604,7 @@ columns = ("ID", "Назва товару", "Категорія", "Кількі�
 table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
 for col in columns:
     table.heading(col, text=col)
-    table.column(col, anchor="center", width=130)
+    table.column(col, anchor="center", width=100)
 
 table.pack(fill="both", expand=True)
 
