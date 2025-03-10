@@ -353,7 +353,7 @@ def report():
 def written_off():
     add_window_written_off = tk.Toplevel()
     add_window_written_off.title("Списаний товар")
-    add_window_written_off.geometry("900x500")
+    add_window_written_off.geometry("1200x500")
 
     # Верхній фрейм (додає порожній простір)
     upper_frame = tk.Frame(add_window_written_off, height=20)
@@ -370,10 +370,26 @@ def written_off():
     columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
                "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дата списання", "Опис списання")
 
+    # Словник для встановлення ширини колонок
+    column_widths = {
+        "ID": 20,
+        "Назва товару": 150,
+        "Категорія": 120,
+        "Кількість": 80,
+        "Одиниці": 80,
+        "Ціна продажу": 100,
+        "Ціна закупівлі": 100,
+        "Постачальник": 100,
+        "Опис товару": 100,
+        "Дата списання": 120,
+        "Опис списання": 180
+    }
+
     table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
+
     for col in columns:
         table.heading(col, text=col)
-        table.column(col, anchor="center", width=130)
+        table.column(col, anchor="center", width=column_widths.get(col, 100))  # Використовуємо значення зі словника
 
     table.pack(fill="both", expand=True)
 
