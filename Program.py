@@ -368,7 +368,7 @@ def written_off():
     right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=5)
 
     columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
-               "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дії")
+               "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дата списання", "Опис списання")
 
     table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
     for col in columns:
@@ -599,12 +599,27 @@ right_frame = tk.Frame(main_frame)
 right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=5)
 
 columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
-           "Ціна продажу", "Ціна закупівлі", "Постачальник","Опис товару", "Дії")
+           "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дії")
+
+# Словник зі своїми ширинами для колонок
+column_widths = {
+    "ID": 30,
+    "Назва товару": 150,
+    "Категорія": 120,
+    "Кількість": 80,
+    "Одиниці": 80,
+    "Ціна продажу": 100,
+    "Ціна закупівлі": 100,
+    "Постачальник": 150,
+    "Опис товару": 200,
+    "Дії": 50
+}
 
 table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
+
 for col in columns:
     table.heading(col, text=col)
-    table.column(col, anchor="center", width=100)
+    table.column(col, anchor="center", width=column_widths.get(col, 100))  # Використовуємо значення зі словника
 
 table.pack(fill="both", expand=True)
 
