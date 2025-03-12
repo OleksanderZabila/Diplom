@@ -124,7 +124,7 @@ update_category_list(None)
 
 # Таблиця
 right_frame = tk.Frame(main_frame)
-right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=5)
+right_frame.place(x=210, y=0, relwidth=0.83, height=250)
 
 columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
            "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дії")
@@ -150,6 +150,27 @@ for col in columns:
     table.column(col, anchor="center", width=column_widths.get(col, 100))  # Використовуємо значення зі словника
 
 table.pack(fill="both", expand=True)
+
+down_frame = tk.Frame(main_frame)
+down_frame.place(x=210, y=260, relwidth=0.50, height=300)
+
+columns = ("ID", "Назва товару", "Кількість", "Одиниці","Ціна ",)
+
+# Словник зі своїми ширинами для колонок
+column_widths = {
+    "ID": 30,
+    "Назва товару": 150,
+    "Кількість": 80,
+    "Одиниці": 80,
+    "Ціна ": 100,
+}
+table_down = ttk.Treeview(down_frame, columns=columns, show="headings", height=15)
+
+for col in columns:
+    table_down.heading(col, text=col)
+    table_down.column(col, anchor="center", width=column_widths.get(col, 100))  # Використовуємо значення зі словника
+
+table_down.pack(fill="both", expand=True)
 
 def on_search_entry_change(event):
     name_filter = search_entry.get().strip()
