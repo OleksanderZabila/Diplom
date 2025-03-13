@@ -372,47 +372,56 @@ def report():
     {}
 #списаний товар
 def written_off():
-    add_window_written_off = tk.Toplevel()
-    add_window_written_off.title("Списаний товар")
-    add_window_written_off.geometry("1200x500")
+    """Відкриває вікно зі списаними товарами"""
+    def load_written_off_goods():
+        """Завантажує дані про списані товари"""
+        table.delete(*table.get_children())  # Очищаємо таблицю перед оновленням
 
-    # Верхній фрейм (додає порожній простір)
-    upper_frame = tk.Frame(add_window_written_off, height=20)
-    upper_frame.pack(fill='x', padx=10, pady=10)
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT g.id_goods, g.name_goods, c.name_category, g.number_goods, u.unit, 
+                       g.selling_price_goods, g.purchase_price_goods, p.name_provider, 
+                       g.description_goods, w.data, w.description
+                FROM written_off_goods w
+                JOIN goods g ON w.id_goods = g.id_goods
+                JOIN category c ON g.id_category_goods = c.id_category
+                JOIN provider p ON g.id_provider_goods = p.id_provider
+                JOIN unit u ON g.units_goods = u.unit
+            """)
+            for row in cursor.fetchall():
+                table.insert("", "end", values=row)
 
-    # Порожній Label для додаткового простору
-    empty_space = tk.Label(upper_frame, text="")
-    empty_space.pack()
-
-    # Фрейм для таблиці (справа)
-    right_frame = tk.Frame(add_window_written_off)
-    right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=5)
+    off_window = Toplevel()
+    off_window.title("Списані товари")
+    off_window.geometry("1200x500")
 
     columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
                "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дата списання", "Опис списання")
 
-    # Словник для встановлення ширини колонок
+    # 🔹 Визначаємо ширину для кожного стовпця
     column_widths = {
-        "ID": 20,
+        "ID": 30,
         "Назва товару": 150,
-        "Категорія": 120,
+        "Категорія": 100,
         "Кількість": 80,
-        "Одиниці": 80,
-        "Ціна продажу": 100,
+        "Одиниці": 60,
+        "Ціна продажу": 90,
         "Ціна закупівлі": 100,
         "Постачальник": 100,
-        "Опис товару": 100,
-        "Дата списання": 130,
+        "Опис товару": 180,
+        "Дата списання": 120,
         "Опис списання": 180
     }
 
-    table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
+    table = ttk.Treeview(off_window, columns=columns, show="headings", height=15)
 
     for col in columns:
         table.heading(col, text=col)
-        table.column(col, anchor="center", width=column_widths.get(col, 100))  # Використовуємо значення зі словника
+        table.column(col, anchor="center", width=column_widths.get(col, 100))  # Використовуємо ширину зі словника
 
     table.pack(fill="both", expand=True)
+
+    load_written_off_goods()  # Завантажуємо списані товари при відкритті
 
 
 # Функція для фільтрації категорій і постачальників
@@ -819,17 +828,25 @@ def delete_goods(product_id):
 
         if connection:
             with connection.cursor() as cursor:
+                # Оновлюємо статус у `goods`, АЛЕ НЕ ЧІПАЄМО g.description_goods
                 cursor.execute("""
-                    UPDATE goods SET status_goods='Списаний', description_goods=%s WHERE id_goods=%s
-                """, (reason, product_id))
+                    UPDATE goods SET status_goods='Списаний' WHERE id_goods=%s
+                """, (product_id,))
+
+                # Додаємо товар у `written_off_goods` із причиною списання
+                cursor.execute("""
+                    INSERT INTO written_off_goods (id_goods, data, description, status_goods)
+                    VALUES (%s, CURRENT_DATE, %s, 'Списаний')
+                """, (product_id, reason))
+
                 connection.commit()
                 messagebox.showinfo("Успіх", "Товар списано!")
-                delete_window.destroy()
+                close_window()
                 update_table()
 
     delete_window = Toplevel()
     delete_window.title("Списання товару")
-    delete_window.geometry("300x150")
+    delete_window.geometry("400x200")
 
     Label(delete_window, text="Причина списання:").pack(pady=5)
     reason_entry = Text(delete_window, height=3, width=40)
@@ -838,8 +855,8 @@ def delete_goods(product_id):
     button_frame = tk.Frame(delete_window)
     button_frame.pack(pady=10)
 
-    Button(button_frame, text="Списати", command=confirm_deletion, width=12).pack(side="left", padx=10)
-    Button(button_frame, text="Скасувати", command=delete_window.destroy, width=12).pack(side="left", padx=10)
+    Button(button_frame, text="Списати", command=lambda: confirm_deletion()).pack(side="left", padx=10)
+    Button(button_frame, text="Скасувати", command=delete_window.destroy).pack(side="left", padx=10)
 
 def confirm_deletion(product_id, reason_entry):
     """Підтверджує списання товару"""
@@ -847,6 +864,37 @@ def confirm_deletion(product_id, reason_entry):
     if not reason:
         messagebox.showerror("Помилка", "Вкажіть причину списання!")
         return
+
+    if connection:
+        with connection.cursor() as cursor:
+            # Отримуємо дані про товар перед видаленням
+            cursor.execute("""
+                SELECT id_goods, name_goods, id_category_goods, number_goods, units_goods, 
+                       selling_price_goods, purchase_price_goods, id_provider_goods, description_goods
+                FROM goods WHERE id_goods = %s
+            """, (product_id,))
+            product_data = cursor.fetchone()
+
+            if not product_data:
+                messagebox.showerror("Помилка", "Не вдалося знайти товар!")
+                return
+
+            # Оновлюємо статус у `goods`
+            cursor.execute("""
+                UPDATE goods SET status_goods='Списаний', description_goods=%s WHERE id_goods=%s
+            """, (reason, product_id))
+
+            # Додаємо товар у `written_off_goods`
+            cursor.execute("""
+                INSERT INTO written_off_goods (id_goods, data, description, status_goods)
+                VALUES (%s, CURRENT_DATE, %s, 'Списаний')
+            """, (product_id, reason))
+
+            connection.commit()
+            messagebox.showinfo("Успіх", "Товар списано!")
+            close_window()
+            update_table()
+
 
 def on_search_entry_change(event):
     name_filter = search_entry.get().strip()
