@@ -713,65 +713,133 @@ def on_item_click(event):
             delete_goods(product_id)
 
 def edit_goods(product_id):
-    """Відкриває вікно редагування товару"""
-
+    """Відкриває вікно редагування товару з уже заповненими полями"""
     def create_edit_window():
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT g.name_goods, c.name_category, g.number_goods, u.unit, 
+                       g.selling_price_goods, g.purchase_price_goods, p.name_provider, g.description_goods
+                FROM goods g
+                JOIN category c ON g.id_category_goods = c.id_category
+                JOIN provider p ON g.id_provider_goods = p.id_provider
+                JOIN unit u ON g.units_goods = u.unit
+                WHERE g.id_goods = %s
+            """, (product_id,))
+            product_data = cursor.fetchone()
+
+        if not product_data:
+            messagebox.showerror("Помилка", "Не вдалося завантажити дані товару!")
+            return None
+
         window = Toplevel()
-        Label(window, text="Назва:").pack()
-        name_entry = Entry(window)
-        name_entry.pack()
+        window.title("Редагувати товар")
 
-        Label(window, text="Кількість:").pack()
-        quantity_entry = Entry(window)
-        quantity_entry.pack()
+        # Поля введення
+        Label(window, text="Назва товару:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        name_entry = Entry(window, width=20)
+        name_entry.insert(0, product_data[0])
+        name_entry.grid(row=0, column=1, padx=5, pady=2)
 
-        Label(window, text="Ціна:").pack()
-        price_entry = Entry(window)
-        price_entry.pack()
+        Label(window, text="Категорія:").grid(row=0, column=2, sticky="w", padx=5, pady=2)
+        category_combobox = ttk.Combobox(window, values=fetch_categories(), width=20)
+        category_combobox.set(product_data[1])
+        category_combobox.grid(row=0, column=3, padx=5, pady=2)
 
-        Button(window, text="Зберегти",
-               command=lambda: update_product(product_id, name_entry, quantity_entry, price_entry)).pack()
-        Button(window, text="Скасувати", command=close_window).pack()
+        Label(window, text="Кількість:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+        quantity_entry = Entry(window, width=10)
+        quantity_entry.insert(0, product_data[2])
+        quantity_entry.grid(row=1, column=1, padx=5, pady=2)
+
+        Label(window, text="Одиниця вимірювання:").grid(row=1, column=2, sticky="w", padx=5, pady=2)
+        unit_combobox = ttk.Combobox(window, values=fetch_units(), width=12)
+        unit_combobox.set(product_data[3])
+        unit_combobox.grid(row=1, column=3, padx=5, pady=2)
+
+        Label(window, text="Ціна продажу:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
+        selling_price_entry = Entry(window, width=10)
+        selling_price_entry.insert(0, product_data[4])
+        selling_price_entry.grid(row=2, column=1, padx=5, pady=2)
+
+        Label(window, text="Ціна закупівлі:").grid(row=2, column=2, sticky="w", padx=5, pady=2)
+        purchase_price_entry = Entry(window, width=10)
+        purchase_price_entry.insert(0, product_data[5])
+        purchase_price_entry.grid(row=2, column=3, padx=5, pady=2)
+
+        Label(window, text="Постачальник:").grid(row=3, column=0, sticky="w", padx=5, pady=2)
+        provider_combobox = ttk.Combobox(window, values=fetch_providers(), width=25)
+        provider_combobox.set(product_data[6])
+        provider_combobox.grid(row=3, column=1, columnspan=2, padx=5, pady=2)
+
+        Label(window, text="Опис товару:").grid(row=4, column=0, sticky="w", padx=5, pady=2)
+        description_entry = Text(window, width=65, height=3)
+        description_entry.insert("1.0", product_data[7])
+        description_entry.grid(row=4, column=1, columnspan=3, padx=5, pady=2)
+
+        # Функція оновлення товару
+        def update_product():
+            if not messagebox.askyesno("Підтвердження", "Ви впевнені, що хочете зберегти зміни?"):
+                return
+
+            new_data = (
+                name_entry.get(), category_combobox.get(), quantity_entry.get(),
+                unit_combobox.get(), selling_price_entry.get(), purchase_price_entry.get(),
+                provider_combobox.get(), description_entry.get("1.0", "end-1c"), product_id
+            )
+
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE goods 
+                    SET name_goods=%s, id_category_goods=(SELECT id_category FROM category WHERE name_category=%s),
+                        number_goods=%s, units_goods=(SELECT unit FROM unit WHERE unit=%s),
+                        selling_price_goods=%s, purchase_price_goods=%s,
+                        id_provider_goods=(SELECT id_provider FROM provider WHERE name_provider=%s),
+                        description_goods=%s
+                    WHERE id_goods=%s
+                """, new_data)
+                connection.commit()
+                messagebox.showinfo("Успіх", "Зміни успішно збережені!")
+                close_window()
+                update_table()
+
+        # Кнопки
+        Button(window, text="Зберегти", command=update_product, width=12).grid(row=5, column=0, columnspan=2, pady=10)
+        Button(window, text="Скасувати", command=close_window, width=12).grid(row=5, column=2, columnspan=2, pady=10)
 
         return window
 
     open_unique_window("Редагувати товар", create_edit_window)
 
-def update_product(product_id, name_entry, quantity_entry, price_entry):
-    """Оновлює товар у базі"""
-    if not messagebox.askyesno("Підтвердження", "Ви впевнені, що хочете зберегти зміни?"):
-        return
-
-    new_name = name_entry.get()
-    new_quantity = quantity_entry.get()
-    new_price = price_entry.get()
-
-    if connection:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                UPDATE goods SET name_goods=%s, number_goods=%s, selling_price_goods=%s
-                WHERE id_goods=%s
-            """, (new_name, new_quantity, new_price, product_id))
-            connection.commit()
-            messagebox.showinfo("Успіх", "Зміни збережено!")
-            close_window()
-            update_table()
-
 
 def delete_goods(product_id):
-    """Відкриває вікно списання товару"""
-    def create_delete_window():
-        window = Toplevel()
-        Label(window, text="Причина списання:").pack()
-        reason_entry = Text(window, height=3, width=40)
-        reason_entry.pack()
+    def confirm_deletion():
+        reason = reason_entry.get("1.0", "end-1c").strip()
+        if not reason:
+            messagebox.showerror("Помилка", "Вкажіть причину списання!")
+            return
 
-        Button(window, text="Списати", command=lambda: confirm_deletion(product_id, reason_entry)).pack()
-        Button(window, text="Скасувати", command=close_window).pack()
+        if connection:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE goods SET status_goods='Списаний', description_goods=%s WHERE id_goods=%s
+                """, (reason, product_id))
+                connection.commit()
+                messagebox.showinfo("Успіх", "Товар списано!")
+                delete_window.destroy()
+                update_table()
 
-        return window
+    delete_window = Toplevel()
+    delete_window.title("Списання товару")
+    delete_window.geometry("300x150")
 
-    open_unique_window("Списання товару", create_delete_window)
+    Label(delete_window, text="Причина списання:").pack(pady=5)
+    reason_entry = Text(delete_window, height=3, width=40)
+    reason_entry.pack(padx=10, pady=5)
+
+    button_frame = tk.Frame(delete_window)
+    button_frame.pack(pady=10)
+
+    Button(button_frame, text="Списати", command=confirm_deletion, width=12).pack(side="left", padx=10)
+    Button(button_frame, text="Скасувати", command=delete_window.destroy, width=12).pack(side="left", padx=10)
 
 def confirm_deletion(product_id, reason_entry):
     """Підтверджує списання товару"""
