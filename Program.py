@@ -1,7 +1,9 @@
 import psycopg2
 import tkinter as tk
-from tkinter import ttk, Entry, Button, Listbox, messagebox
+from tkinter import ttk, Entry, Button, Listbox, messagebox, Toplevel, Label, Text
 from config import host, user, password, db_name, port
+
+open_window = None
 
 # Підключення до бази даних
 try:
@@ -17,6 +19,25 @@ try:
 except Exception as _ex:
     print("[ERROR] Помилка підключення:", _ex)
     connection = None
+
+def open_unique_window(title, create_window_func):
+    """Функція, яка дозволяє відкрити лише одне вікно"""
+    global open_window
+
+    if open_window and open_window.winfo_exists():
+        open_window.lift()
+        return
+
+    open_window = create_window_func()
+    open_window.title(title)
+    open_window.protocol("WM_DELETE_WINDOW", lambda: close_window())
+
+def close_window():
+    """Закриває відкрите вікно і скидає змінну"""
+    global open_window
+    if open_window:
+        open_window.destroy()
+        open_window = None
 
 # Функції отримання даних
 def fetch_categories():
@@ -641,6 +662,7 @@ table.pack(fill="both", expand=True)
 
 def update_table(category=None, name_filter=None):
     table.delete(*table.get_children())  # Очищуємо таблицю перед оновленням
+
     if connection:
         with connection.cursor() as cursor:
             query = """
@@ -655,18 +677,108 @@ def update_table(category=None, name_filter=None):
             params = []
 
             if category:
-                query += " WHERE c.name_category = %s"
+                query += " AND c.name_category = %s"
                 params.append(category)
 
             if name_filter:
-                query += " AND g.name_goods ILIKE %s" if category else " WHERE g.name_goods ILIKE %s"
+                query += " AND g.name_goods ILIKE %s"
                 params.append(f"%{name_filter}%")
 
             cursor.execute(query, params)
 
             for row in cursor.fetchall():
-                table.insert("", tk.END, values=row)
+                table.insert("", "end", values=row + ("✏️  🗑️",))  # Додаємо іконки у колонку "Дії"
 
+
+def on_item_click(event):
+    item_id = table.identify_row(event.y)  # Отримуємо рядок
+    column_id = table.identify_column(event.x)  # Отримуємо колонку
+
+    if not item_id:
+        return
+
+    values = table.item(item_id, "values")  # Отримуємо значення рядка
+    if not values or len(values) < 10:  # Перевіряємо, чи є дані
+        return
+
+    product_id = values[0]  # ID товару
+    action = values[-1]  # Остання колонка містить "✏️  🗑️"
+
+    if column_id == "#10":  # Колонка "Дії"
+        x_pos = event.x - table.bbox(item_id, column=9)[0]  # Визначаємо позицію кліку в колонці "Дії"
+
+        if x_pos < 25:  # Якщо клік ближче до лівого краю - "✏️"
+            edit_goods(product_id)
+        else:  # Якщо клік ближче до правого краю - "🗑️"
+            delete_goods(product_id)
+
+def edit_goods(product_id):
+    """Відкриває вікно редагування товару"""
+
+    def create_edit_window():
+        window = Toplevel()
+        Label(window, text="Назва:").pack()
+        name_entry = Entry(window)
+        name_entry.pack()
+
+        Label(window, text="Кількість:").pack()
+        quantity_entry = Entry(window)
+        quantity_entry.pack()
+
+        Label(window, text="Ціна:").pack()
+        price_entry = Entry(window)
+        price_entry.pack()
+
+        Button(window, text="Зберегти",
+               command=lambda: update_product(product_id, name_entry, quantity_entry, price_entry)).pack()
+        Button(window, text="Скасувати", command=close_window).pack()
+
+        return window
+
+    open_unique_window("Редагувати товар", create_edit_window)
+
+def update_product(product_id, name_entry, quantity_entry, price_entry):
+    """Оновлює товар у базі"""
+    if not messagebox.askyesno("Підтвердження", "Ви впевнені, що хочете зберегти зміни?"):
+        return
+
+    new_name = name_entry.get()
+    new_quantity = quantity_entry.get()
+    new_price = price_entry.get()
+
+    if connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE goods SET name_goods=%s, number_goods=%s, selling_price_goods=%s
+                WHERE id_goods=%s
+            """, (new_name, new_quantity, new_price, product_id))
+            connection.commit()
+            messagebox.showinfo("Успіх", "Зміни збережено!")
+            close_window()
+            update_table()
+
+
+def delete_goods(product_id):
+    """Відкриває вікно списання товару"""
+    def create_delete_window():
+        window = Toplevel()
+        Label(window, text="Причина списання:").pack()
+        reason_entry = Text(window, height=3, width=40)
+        reason_entry.pack()
+
+        Button(window, text="Списати", command=lambda: confirm_deletion(product_id, reason_entry)).pack()
+        Button(window, text="Скасувати", command=close_window).pack()
+
+        return window
+
+    open_unique_window("Списання товару", create_delete_window)
+
+def confirm_deletion(product_id, reason_entry):
+    """Підтверджує списання товару"""
+    reason = reason_entry.get("1.0", "end-1c").strip()
+    if not reason:
+        messagebox.showerror("Помилка", "Вкажіть причину списання!")
+        return
 
 def on_search_entry_change(event):
     name_filter = search_entry.get().strip()
@@ -691,8 +803,10 @@ search_entry.bind("<FocusIn>", on_search_entry_focus_in)
 search_entry.bind("<FocusOut>", on_search_entry_focus_out)
 search_entry.bind("<KeyRelease>", on_search_entry_change)  # Залишаємо вашу функцію пошуку
 
+table.bind("<Button-1>", on_item_click)
 update_table()
 program.mainloop()
+
 
 if connection:
     connection.close()
