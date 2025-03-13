@@ -650,6 +650,7 @@ def update_table(category=None, name_filter=None):
                 JOIN category c ON g.id_category_goods = c.id_category
                 JOIN provider p ON g.id_provider_goods = p.id_provider
                 JOIN unit u ON g.units_goods = u.unit
+                WHERE (g.status_goods IS NULL OR g.status_goods != 'Списаний')
             """
             params = []
 
