@@ -379,7 +379,7 @@ def written_off():
 
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT g.id_goods, g.name_goods, c.name_category, g.number_goods, u.unit, 
+                SELECT g.id_goods, g.name_goods, c.name_category, w.number_written_off_goods, u.unit, 
                        g.selling_price_goods, g.purchase_price_goods, p.name_provider, 
                        g.description_goods, w.data, w.description
                 FROM written_off_goods w
@@ -387,6 +387,7 @@ def written_off():
                 JOIN category c ON g.id_category_goods = c.id_category
                 JOIN provider p ON g.id_provider_goods = p.id_provider
                 JOIN unit u ON g.units_goods = u.unit
+                WHERE (g.number_goods IS NULL OR g.number_goods != '0')
             """)
             for row in cursor.fetchall():
                 table.insert("", "end", values=row)
@@ -394,6 +395,24 @@ def written_off():
     off_window = Toplevel()
     off_window.title("Списані товари")
     off_window.geometry("1200x500")
+    off_window.resizable(width=False, height=False)
+
+    # Верхнє меню
+    upper_frame_delet = tk.Frame(off_window)
+    upper_frame_delet.pack(fill='x', padx=10, pady=5)
+
+    delet_this = Button(upper_frame_delet, text="Видалити обране", command=2)
+    delet_this.pack(side='right', padx=5)
+
+    put_oll = Button(upper_frame_delet, text="Вибрати все", command=3)
+    put_oll.pack(side='right', padx=5)
+
+    dosent_put_oll = Button(upper_frame_delet, text="Відмінити все", command=4)
+    dosent_put_oll.pack(side='right', padx=5)
+
+
+
+    # Головний контейнер
 
     columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
                "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дата списання", "Опис списання")
@@ -681,7 +700,6 @@ def update_table(category=None, name_filter=None):
                 JOIN category c ON g.id_category_goods = c.id_category
                 JOIN provider p ON g.id_provider_goods = p.id_provider
                 JOIN unit u ON g.units_goods = u.unit
-                WHERE (g.status_goods IS NULL OR g.status_goods != 'Списаний')
             """
             params = []
 
@@ -699,6 +717,7 @@ def update_table(category=None, name_filter=None):
                 table.insert("", "end", values=row + ("✏️  🗑️",))  # Додаємо іконки у колонку "Дії"
 
 
+#Функція карандаша, смітника
 def on_item_click(event):
     item_id = table.identify_row(event.y)  # Отримуємо рядок
     column_id = table.identify_column(event.x)  # Отримуємо колонку
@@ -821,80 +840,77 @@ def edit_goods(product_id):
 
 def delete_goods(product_id):
     def confirm_deletion():
+        try:
+            amount_to_write_off = int(amount_entry.get().strip())
+            if amount_to_write_off <= 0:
+                messagebox.showerror("Помилка", "Кількість списання має бути більше 0!")
+                return
+        except ValueError:
+            messagebox.showerror("Помилка", "Введіть коректну кількість!")
+            return
+
         reason = reason_entry.get("1.0", "end-1c").strip()
         if not reason:
             messagebox.showerror("Помилка", "Вкажіть причину списання!")
             return
 
-        if connection:
-            with connection.cursor() as cursor:
-                # Оновлюємо статус у `goods`, АЛЕ НЕ ЧІПАЄМО g.description_goods
-                cursor.execute("""
-                    UPDATE goods SET status_goods='Списаний' WHERE id_goods=%s
-                """, (product_id,))
-
-                # Додаємо товар у `written_off_goods` із причиною списання
-                cursor.execute("""
-                    INSERT INTO written_off_goods (id_goods, data, description, status_goods)
-                    VALUES (%s, CURRENT_DATE, %s, 'Списаний')
-                """, (product_id, reason))
-
-                connection.commit()
-                messagebox.showinfo("Успіх", "Товар списано!")
-                close_window()
-                update_table()
-
-    delete_window = Toplevel()
-    delete_window.title("Списання товару")
-    delete_window.geometry("400x200")
-
-    Label(delete_window, text="Причина списання:").pack(pady=5)
-    reason_entry = Text(delete_window, height=3, width=40)
-    reason_entry.pack(padx=10, pady=5)
-
-    button_frame = tk.Frame(delete_window)
-    button_frame.pack(pady=10)
-
-    Button(button_frame, text="Списати", command=lambda: confirm_deletion()).pack(side="left", padx=10)
-    Button(button_frame, text="Скасувати", command=delete_window.destroy).pack(side="left", padx=10)
-
-def confirm_deletion(product_id, reason_entry):
-    """Підтверджує списання товару"""
-    reason = reason_entry.get("1.0", "end-1c").strip()
-    if not reason:
-        messagebox.showerror("Помилка", "Вкажіть причину списання!")
-        return
-
-    if connection:
         with connection.cursor() as cursor:
-            # Отримуємо дані про товар перед видаленням
-            cursor.execute("""
-                SELECT id_goods, name_goods, id_category_goods, number_goods, units_goods, 
-                       selling_price_goods, purchase_price_goods, id_provider_goods, description_goods
-                FROM goods WHERE id_goods = %s
-            """, (product_id,))
-            product_data = cursor.fetchone()
-
-            if not product_data:
-                messagebox.showerror("Помилка", "Не вдалося знайти товар!")
+            # Отримуємо поточну кількість товару
+            cursor.execute("SELECT number_goods FROM goods WHERE id_goods=%s", (product_id,))
+            result = cursor.fetchone()
+            if not result:
+                messagebox.showerror("Помилка", "Товар не знайдено!")
                 return
 
-            # Оновлюємо статус у `goods`
-            cursor.execute("""
-                UPDATE goods SET status_goods='Списаний', description_goods=%s WHERE id_goods=%s
-            """, (reason, product_id))
+            current_amount = result[0]
+            if amount_to_write_off > current_amount:
+                messagebox.showerror("Помилка", "На складі недостатньо товару для списання!")
+                return
 
-            # Додаємо товар у `written_off_goods`
+            # Оновлюємо кількість товару в таблиці goods
             cursor.execute("""
-                INSERT INTO written_off_goods (id_goods, data, description, status_goods)
-                VALUES (%s, CURRENT_DATE, %s, 'Списаний')
-            """, (product_id, reason))
+                UPDATE goods SET number_goods = number_goods - %s WHERE id_goods = %s
+            """, (amount_to_write_off, product_id))
+
+            # Перевіряємо, чи товар вже є у written_off_goods
+            cursor.execute("SELECT id_goods FROM written_off_goods WHERE id_goods = %s", (product_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                # Оновлюємо запис, якщо товар вже списувався раніше
+                cursor.execute("""
+                    UPDATE written_off_goods 
+                    SET number_written_off_goods = number_written_off_goods + %s, 
+                        data = CURRENT_DATE, 
+                        description = %s 
+                    WHERE id_goods = %s
+                """, (amount_to_write_off, reason, product_id))
+            else:
+                # Додаємо новий запис, якщо товар ще не був списаний
+                cursor.execute("""
+                    INSERT INTO written_off_goods (id_goods, data, description, number_written_off_goods)
+                    VALUES (%s, CURRENT_DATE, %s, %s)
+                """, (product_id, reason, amount_to_write_off))
 
             connection.commit()
             messagebox.showinfo("Успіх", "Товар списано!")
             close_window()
             update_table()
 
+    # Створюємо вікно введення даних
+    delete_window = Toplevel()
+    delete_window.title("Списання товару")
+    delete_window.geometry("300x200")
+
+    Label(delete_window, text="Кількість для списання:").pack()
+    amount_entry = Entry(delete_window)
+    amount_entry.pack()
+
+    Label(delete_window, text="Причина списання:").pack()
+    reason_entry = Text(delete_window, height=3, width=30)
+    reason_entry.pack()
+
+    Button(delete_window, text="Підтвердити", command=confirm_deletion).pack()
 
 def on_search_entry_change(event):
     name_filter = search_entry.get().strip()
