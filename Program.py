@@ -656,7 +656,7 @@ def select_category(event):
 category_entry = Entry(left_frame, width=30)
 category_entry.insert(0, "Введіть категорію")
 category_entry.bind("<FocusIn>", lambda event: category_entry.delete(0,
-                                                                     tk.END) if category_entry.get() == "Введіть категорію" else None)
+                    tk.END) if category_entry.get() == "Введіть категорію" else None)
 category_entry.bind("<FocusOut>",
                     lambda event: category_entry.insert(0, "Введіть категорію") if not category_entry.get() else None)
 category_entry.bind("<KeyRelease>", update_category_list)
@@ -711,7 +711,7 @@ def update_table(category=None, name_filter=None):
                 JOIN category c ON g.id_category_goods = c.id_category
                 JOIN provider p ON g.id_provider_goods = p.id_provider
                 JOIN unit u ON g.units_goods = u.unit
-                WHERE g.number_goods <> 0;
+                WHERE g.number_goods <> 0
             """
             params = []
 
