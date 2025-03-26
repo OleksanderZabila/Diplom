@@ -2,6 +2,7 @@ import psycopg2
 import tkinter as tk
 from tkinter import ttk, Entry, Button, Listbox, messagebox, Toplevel, Label, Text
 from config import host, user, password, db_name, port
+from datetime import datetime
 
 open_window = None
 
@@ -564,6 +565,11 @@ def edit_product(product_id):
     cancel_button = Button(button_frame, text="Скасувати", command=edit_window.destroy, width=12)
     cancel_button.pack(side="left", padx=5)
 
+def update_time():
+    """Оновлює час у віджеті Label кожну секунду."""
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    time_label.config(text=current_time)
+    program.after(1000, update_time)  # Запускає оновлення кожну секунду
 # Оновлення головної таблиці (додаємо поле "Опис товару" і кнопку редагування)
 def update_table(category=None):
     for item in table.get_children():
@@ -582,8 +588,13 @@ program.geometry('1300x600')
 program.resizable(width=False, height=False)
 
 # Верхнє меню
+
+
 upper_frame = tk.Frame(program)
 upper_frame.pack(fill='x', padx=10, pady=5)
+
+time_label = tk.Label(upper_frame, text="", font=("Arial", 14), bg="lightgray")
+time_label.pack(side='left', padx=0)
 
 search_label = tk.Label(upper_frame, text="Фільтр за назвою:")
 search_label.pack(side='left', padx=5)
@@ -936,6 +947,7 @@ search_entry.bind("<FocusIn>", on_search_entry_focus_in)
 search_entry.bind("<FocusOut>", on_search_entry_focus_out)
 search_entry.bind("<KeyRelease>", on_search_entry_change)  # Залишаємо вашу функцію пошуку
 
+update_time()
 table.bind("<Button-1>", on_item_click)
 update_table()
 program.mainloop()
