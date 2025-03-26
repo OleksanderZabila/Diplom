@@ -29,6 +29,7 @@ def update_table(category=None, name_filter=None):
                 JOIN category c ON g.id_category_goods = c.id_category
                 JOIN provider p ON g.id_provider_goods = p.id_provider
                 JOIN unit u ON g.units_goods = u.unit
+                WHERE g.number_goods <> 0
             """
             params = []
 
@@ -122,12 +123,49 @@ category_listbox.bind("<<ListboxSelect>>", select_category)
 categories = fetch_categories()
 update_category_list(None)
 
-# Таблиця
+# Таблиця нижня
 right_frame = tk.Frame(main_frame)
 right_frame.place(x=210, y=0, relwidth=0.83, height=250)
 
 columns = ("ID", "Назва товару", "Категорія", "Кількість", "Одиниці",
-           "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару", "Дії")
+           "Ціна продажу", "Ціна закупівлі", "Постачальник", "Опис товару")
+
+# Таблиця нижня права
+
+# Створення фрейму в правому нижньому куті для циффр
+right_bottom_frame = tk.Frame(program, width=100, height=300, bg="white", highlightbackground="gray", highlightthickness=1)
+right_bottom_frame.place(relx=0.99, rely=0.985, anchor="se")
+right_bottom_frame.grid_propagate(False)  # Запобігає зміні розміру фрейма
+
+def add_buttons_to_frame(frame):
+    # Створюємо внутрішній фрейм для кнопок (займає рівно половину `right_bottom_frame`)
+    buttons_frame = tk.Frame(frame, bg="white", width=210, height=300)
+    buttons_frame.pack(side="right", fill="both", expand=True)
+    buttons_frame.grid_propagate(False)  # Фіксуємо розмір `buttons_frame`
+
+    # Налаштування сітки
+    for i in range(5):  # 5 рядків
+        buttons_frame.grid_rowconfigure(i, weight=1, minsize=50)
+    for i in range(3):  # 3 колонки
+        buttons_frame.grid_columnconfigure(i, weight=1, minsize=50)
+
+    # Дані про кнопки: текст, рядок, колонка, rowspan, colspan
+    buttons = [
+        ("7", 0, 0, 1, 1), ("8", 0, 1, 1, 1), ("9", 0, 2, 1, 1),
+        ("4", 1, 0, 1, 1), ("5", 1, 1, 1, 1), ("6", 1, 2, 1, 1),
+        ("1", 2, 0, 1, 1), ("2", 2, 1, 1, 1), ("3", 2, 2, 1, 1),
+        ("0", 3, 0, 1, 1), (".", 3, 1, 1, 1), ("Enter", 3, 2, 2, 1),  # Enter 2x1 (широкий)
+        ("Delete", 4, 0, 1, 2),  # Del 1x2 (високий)
+    ]
+
+    # Створення кнопок
+    for text, row, col, rowspan, colspan in buttons:
+        btn = tk.Button(buttons_frame, text=text, width=8, height=2)
+        btn.grid(row=row, column=col, rowspan=rowspan, columnspan=colspan, padx=2, pady=2, sticky="news")
+
+left_bottom_frame = tk.Frame(program, width=210, height=302, bg="white", highlightbackground="gray", highlightthickness=1)
+left_bottom_frame.place(relx=0.825, rely=0.985, anchor="se")  # Розташування зліва внизу
+left_bottom_frame.grid_propagate(False)  # Запобігає зміні розміру фрейма
 
 # Словник зі своїми ширинами для колонок
 column_widths = {
@@ -140,7 +178,6 @@ column_widths = {
     "Ціна закупівлі": 100,
     "Постачальник": 150,
     "Опис товару": 200,
-    "Дії": 50
 }
 
 table = ttk.Treeview(right_frame, columns=columns, show="headings", height=15)
@@ -152,7 +189,7 @@ for col in columns:
 table.pack(fill="both", expand=True)
 
 down_frame = tk.Frame(main_frame)
-down_frame.place(x=210, y=260, relwidth=0.50, height=300)
+down_frame.place(x=210, y=258, relwidth=0.50, height=302)
 
 columns = ("ID", "Назва товару", "Кількість", "Одиниці","Ціна ",)
 
@@ -194,6 +231,7 @@ search_entry.bind("<FocusIn>", on_search_entry_focus_in)
 search_entry.bind("<FocusOut>", on_search_entry_focus_out)
 search_entry.bind("<KeyRelease>", on_search_entry_change)  # Залишаємо вашу функцію пошуку
 
+add_buttons_to_frame(right_bottom_frame)
 update_table()
 program.mainloop()
 
